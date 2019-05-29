@@ -51,11 +51,11 @@
 <script>
     import EmojiMapManager from '@/js/EmojiMapManager';
     import LabConvert from '@/js/LabConvert';
-    import EmojiSplitter from "@/js/EmojiSplitter";
-    import EmojiMap from "@/js/EmojiMap";
+    // import EmojiSplitter from "@/js/EmojiSplitter";
+    // import EmojiMap from "@/js/EmojiMap";
 
-    let a = new EmojiMap('🏴🏁🚩🏳️‍🌈🇦🇫🇦🇽🇦🇱🇩🇿👌👌🏻');
-    console.log(a);
+    // let a = new EmojiMap('🏴🏁🚩🏳️‍🌈🇦🇫🇦🇽🇦🇱🇩🇿👌👌🏻');
+    // console.log(a);
 
     export default {
         name: 'app',

@@ -34,7 +34,8 @@ export default class EmojiMap {
             canvas.height = 20;
             context.font = `${this.renderSize}px Arial`;
             let width = context.measureText(emoji).width;
-            if (width > this.renderSize * 0.95)
+            //Todo filter based on color too, if width is low but it is colored then it's ok
+            if (width > this.renderSize * 0.9)
                 result += emoji;
             else {
                 console.log("Filtering out:", emoji, width);
