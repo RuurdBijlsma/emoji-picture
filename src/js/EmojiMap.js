@@ -3,8 +3,10 @@ import LabConvert from '@/js/LabConvert.js';
 
 export default class EmojiMap {
     constructor(emojiPalette) {
+        this.renderSize = 10;
+
         if (emojiPalette) {
-            this.palette = emojiPalette;
+            this.palette = this.filterNonRenderableEmojis(emojiPalette);
             this.emojiToColor = this.createEmojiToColorMap(this.palette);
             this.colorToEmoji = this.createColorToEmojiMap(this.emojiToColor);
         }
@@ -19,22 +21,44 @@ export default class EmojiMap {
         return emojiMap;
     }
 
+    filterNonRenderableEmojis(emojiPalette) {
+        let result = '';
+        let emojis = Splitter.spliddit(emojiPalette);
+
+        for (let emoji of emojis) {
+            let canvas = document.createElement('canvas');
+            let context = canvas.getContext('2d');
+            canvas.style.width = '200px';
+            canvas.style.height = '200px';
+            canvas.width = 20;
+            canvas.height = 20;
+            context.font = `${this.renderSize}px Arial`;
+            let width = context.measureText(emoji).width;
+            if (width > this.renderSize * 0.95)
+                result += emoji;
+            else {
+                console.log("Filtering out:", emoji, width);
+            }
+        }
+
+        return result;
+    }
+
     createEmojiToColorMap(emojiPalette) {
         let map = {};
         let emojis = Splitter.spliddit(emojiPalette);
-        let renderSize = 10;
         let canvas = document.createElement('canvas');
         let context = canvas.getContext('2d');
-        canvas.width = Math.round(renderSize * 1.4) - 2
-        canvas.height = Math.round(renderSize * 1.4) - 3;
+        canvas.width = Math.round(this.renderSize * 1.4) - 2;
+        canvas.height = Math.round(this.renderSize * 1.4) - 3;
         canvas.style.width = '200px';
         canvas.style.height = '200px';
         // document.body.appendChild(canvas);
-        context.font = `${renderSize}px Arial`;
+        context.font = `${this.renderSize}px Arial`;
         context.fillStyle = 'white';
         for (let emoji of emojis) {
             context.clearRect(0, 0, canvas.width, canvas.height);
-            context.fillText(emoji, -1, renderSize - 1);
+            context.fillText(emoji, -1, this.renderSize - 1);
             let data = context.getImageData(0, 0, canvas.width, canvas.height);
             let totals = [0, 0, 0];
             for (let i = 0; i < data.data.length; i += 4) {
@@ -76,6 +100,6 @@ export default class EmojiMap {
                 }
             }
         }
-        return { map, step, colorRange };
+        return {map, step, colorRange};
     }
 }

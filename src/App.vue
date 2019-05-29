@@ -54,7 +54,7 @@
     import EmojiSplitter from "@/js/EmojiSplitter";
     import EmojiMap from "@/js/EmojiMap";
 
-    let a = new EmojiMap('hoi');
+    let a = new EmojiMap('🏴🏁🚩🏳️‍🌈🇦🇫🇦🇽🇦🇱🇩🇿👌👌🏻');
     console.log(a);
 
     export default {
