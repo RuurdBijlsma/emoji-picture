@@ -29,7 +29,9 @@ export default class EmojiMap {
         canvas.height = Math.round(renderSize * 1.4) - 3;
         canvas.style.width = '200px';
         canvas.style.height = '200px';
+        // document.body.appendChild(canvas);
         context.font = `${renderSize}px Arial`;
+        context.fillStyle = 'white';
         for (let emoji of emojis) {
             context.clearRect(0, 0, canvas.width, canvas.height);
             context.fillText(emoji, -1, renderSize - 1);
@@ -49,6 +51,7 @@ export default class EmojiMap {
         return map;
     }
 
+    //Todo nearest neighbour search
     createColorToEmojiMap(emojiToColorMap) {
         const colorRange = 100;
         const step = 4;

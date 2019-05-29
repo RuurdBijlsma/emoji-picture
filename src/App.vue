@@ -1,3 +1,6 @@
+<!--Todo:-->
+<!--Export EmojiPicture-->
+
 <template>
     <div id="app">
         <md-content>
@@ -26,9 +29,9 @@
                         <md-textarea v-model="emojiPalette"></md-textarea>
                     </md-field>
                 </md-list-item>
-                <md-list-item>
-                    <md-button class="md-dense md-raised" @click="updatePalette()">Update palette</md-button>
-                </md-list-item>
+                <!--<md-list-item>-->
+                <!--<md-button class="md-dense md-raised" @click="updatePalette()">Update palette</md-button>-->
+                <!--</md-list-item>-->
             </md-list>
 
             <md-button @click="showOptions=!showOptions">{{this.showOptions?"Hide options":"Show options"}}</md-button>
@@ -38,8 +41,8 @@
             <md-button v-if="grid!==null" class="md-dense md-raised md-primary" @click="loadImage()">Update emoji
                 picture
             </md-button>
-            <pre v-show="!loading" class="output"></pre>
-            <md-progress-spinner v-if="loading" md-mode="indeterminate"></md-progress-spinner>
+            <md-progress-spinner v-show="loading" md-mode="indeterminate"></md-progress-spinner>
+            <pre class="output"></pre>
             <img class="preview-image">
         </md-content>
     </div>
@@ -48,6 +51,11 @@
 <script>
     import EmojiMapManager from '@/js/EmojiMapManager';
     import LabConvert from '@/js/LabConvert';
+    import EmojiSplitter from "@/js/EmojiSplitter";
+    import EmojiMap from "@/js/EmojiMap";
+
+    let a = new EmojiMap('hoi');
+    console.log(a);
 
     export default {
         name: 'app',
@@ -61,7 +69,6 @@
                 grid: null,
                 imageData: null,
                 emojiWidth: 100,
-                emojiSize: 4,
                 paletteOptions: [
                     {
                         name: 'Default',
@@ -86,8 +93,8 @@
         },
         mounted() {
             this.emojiPalette = this.paletteOptions[0].emojis;// Default
-            this.setResolution();
-            window.addEventListener('resize', () => this.setResolution());
+            this.updateScaleFactor();
+            window.addEventListener('resize', () => this.updateScaleFactor());
             this.updatePalette();
         },
         methods: {
@@ -97,15 +104,13 @@
                 console.log("Updated palette", this.emojiMap);
                 this.loading = false;
             },
-            setResolution(emojiWidth) {
-                if (emojiWidth)
-                    this.emojiWidth = emojiWidth;
-                this.emojiSize = document.querySelector('#app').offsetWidth / this.emojiWidth;
-            },
             loadImage() {
-                this.setResolution();
+                let now = performance.now();
                 this.loading = true;
                 console.log('loading true');
+
+                if (this.emojiMap.palette !== this.emojiPalette)
+                    this.emojiMap = EmojiMapManager.emojiMap(this.emojiPalette);
 
                 let file = document.querySelector('input[type=file]').files[0];
                 let image = document.querySelector('.preview-image');
@@ -129,12 +134,14 @@
 
                     this.loading = false;
                     console.log('loading false');
+                    let time = performance.now() - now;
+                    console.log(`${time} ms`)
                 }
             },
 
             update() {
                 // setTimeout(() => {
-                if(EmojiMapManager.isCached(this.emojiPalette)){
+                if (EmojiMapManager.isCached(this.emojiPalette)) {
                     this.updatePalette();
                 }
 
@@ -145,15 +152,18 @@
             },
 
             renderEmojiGrid(emojiGrid) {
+                this.updateScaleFactor();
                 let html = '';
+                let outputElement = document.querySelector('.output');
+                //Make fresh html grid
                 for (let y = 0; y < emojiGrid.height; y++) {
-                    html += `<div class='row'>`
+                    html += `<div class='row'>`;
                     for (let x = 0; x < emojiGrid.width; x++) {
                         html += `<div class='emoji'>${emojiGrid.grid[y][x]}</div>`;
                     }
                     html += '</div>';
                 }
-                document.querySelector('.output').innerHTML = html;
+                outputElement.innerHTML = html;
             },
 
             createEmojiGrid(width, height) {
@@ -179,13 +189,29 @@
                     emojiGrid.grid[y][x] = this.emojiMap.colorToEmoji.map[lab[0]][lab[1]][lab[2]];
                 }
             },
+            updateScaleFactor() {
+                let output = document.querySelector('.output');
+                let appWidth = document.querySelector('#app').offsetWidth;
+                let scaleFactor = appWidth / this.emojiWidth;
+                output.style.width = this.emojiWidth + 'px';
+
+                let newHeight;
+                if (this.grid !== null)
+                    newHeight = this.grid.height * scaleFactor;
+                else
+                    newHeight = 0;
+                output.style.height = newHeight + 'px';
+
+                output.style.transform = `scale(${scaleFactor})`;
+                console.log("Scaling output with factor", scaleFactor);
+            }
 
         },
         watch: {
-            emojiSize() {
-                let newSize = Math.floor(this.emojiSize);
-                console.log("Changing emoji size to", newSize);
-                document.documentElement.style.setProperty('--emoji-size', newSize + 'px');
+            emojiWidth() {
+                this.updateScaleFactor();
+                // console.log("Changing emoji size to", newSize);
+                // document.documentElement.style.setProperty('--emoji-size', newSize + 'px');
             }
         }
     }
@@ -193,20 +219,25 @@
 
 <style>
     :root {
-        --emoji-size: 10px;
+        --emoji-size: 1px;
     }
 
     #app {
-        max-width:800px;
-        margin:0 auto;
+        max-width: 800px;
+        margin: 0 auto;
         display: block;
     }
 
     .output {
         text-align: center;
+        margin-top: 0px;
+        margin-bottom: 0px;
         margin-left: -20px;
         line-height: var(--emoji-size);
         white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+        pointer-events: none;
+        transform-origin: top left;
     }
 
     .row {
