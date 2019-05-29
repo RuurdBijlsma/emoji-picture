@@ -100,7 +100,7 @@
             setResolution(emojiWidth) {
                 if (emojiWidth)
                     this.emojiWidth = emojiWidth;
-                this.emojiSize = document.body.offsetWidth / this.emojiWidth;
+                this.emojiSize = document.querySelector('#app').offsetWidth / this.emojiWidth;
             },
             loadImage() {
                 this.setResolution();
@@ -197,13 +197,15 @@
     }
 
     #app {
+        max-width:800px;
+        margin:0 auto;
+        display: block;
     }
 
     .output {
         text-align: center;
         margin-left: -20px;
         line-height: var(--emoji-size);
-        width: 100vw;
         white-space: nowrap;
     }
 
