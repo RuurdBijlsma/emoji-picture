@@ -20,12 +20,19 @@
                     </md-field>
                 </md-list-item>
 
-                <md-field>
-                    <label for="palette-select">Quick palette</label>
-                    <md-select id="palette-select" v-model="emojiPalette">
-                        <md-option v-for="palette in paletteOptions" :value="palette.emojis">{{palette.name}}</md-option>
-                    </md-select>
-                </md-field>
+                <md-list-item>
+                    <md-switch v-model="useWebgl">Use WebGL renderer (faster, but no zoom capabilities)</md-switch>
+                </md-list-item>
+
+                <md-list-item>
+                    <md-field>
+                        <label for="palette-select">Quick palette</label>
+                        <md-select id="palette-select" v-model="emojiPalette">
+                            <md-option v-for="palette in paletteOptions" :value="palette.emojis">{{palette.name}}
+                            </md-option>
+                        </md-select>
+                    </md-field>
+                </md-list-item>
                 <md-list-item>
                     <md-field>
                         <label>Palette</label>
@@ -45,8 +52,8 @@
                 picture
             </md-button>
             <md-progress-spinner v-show="loading" md-mode="indeterminate"></md-progress-spinner>
-            <!--            <pre class="output"></pre>-->
-            <div class="render-output"></div>
+            <pre v-show="!useWebgl" class="output"></pre>
+            <div v-show="useWebgl" class="render-output"></div>
             <img class="preview-image">
         </md-content>
     </div>
@@ -68,6 +75,7 @@
         components: {},
         data() {
             return {
+                useWebgl: false,
                 showOptions: false,
                 loading: false,
                 imageFile: null,
@@ -106,7 +114,7 @@
             // this.updatePalette();
 
             this.renderView = new PIXI.Application({backgroundColor: 0x222222});
-            this.renderView.renderer.resize(0,0);
+            this.renderView.renderer.resize(0, 0);
             document.querySelector('.render-output').appendChild(this.renderView.view);
         },
         methods: {
@@ -167,40 +175,41 @@
             },
 
             renderEmojiGrid(emojiGrid) {
-                const appWidth = document.querySelector('#app').offsetWidth;
-                const emojiSize = appWidth / this.emojiWidth;
+                if (this.useWebgl) {
+                    const appWidth = document.querySelector('#app').offsetWidth;
+                    const emojiSize = appWidth / this.emojiWidth;
 
-                this.renderView.renderer.resize(appWidth, emojiGrid.height * emojiSize);
-                // Clear stage
-                while (this.renderView.stage.children[0]) {
-                    this.renderView.stage.removeChild(this.renderView.stage.children[0]);
-                }
-
-
-                for (let y = 0; y < emojiGrid.height; y++) {
-                    for (let x = 0; x < emojiGrid.width; x++) {
-                        let emoji = emojiGrid.grid[y][x];
-                        let sprite = new PIXI.Sprite(this.spriteCache[emoji]);
-                        sprite.x = x * emojiSize;
-                        sprite.y = y * emojiSize;
-
-                        this.renderView.stage.addChild(sprite);
+                    this.renderView.renderer.resize(appWidth, emojiGrid.height * emojiSize);
+                    // Clear stage
+                    while (this.renderView.stage.children[0]) {
+                        this.renderView.stage.removeChild(this.renderView.stage.children[0]);
                     }
+
+
+                    for (let y = 0; y < emojiGrid.height; y++) {
+                        for (let x = 0; x < emojiGrid.width; x++) {
+                            let emoji = emojiGrid.grid[y][x];
+                            let sprite = new PIXI.Sprite(this.spriteCache[emoji]);
+                            sprite.x = x * emojiSize;
+                            sprite.y = y * emojiSize;
+
+                            this.renderView.stage.addChild(sprite);
+                        }
+                    }
+                } else {
+                    this.updateScaleFactor();
+                    let html = '';
+                    let outputElement = document.querySelector('.output');
+                    //Make fresh html grid
+                    for (let y = 0; y < emojiGrid.height; y++) {
+                        html += `<div class='row'>`;
+                        for (let x = 0; x < emojiGrid.width; x++) {
+                            html += `<div class='emoji'>${emojiGrid.grid[y][x]}</div>`;
+                        }
+                        html += '</div>';
+                    }
+                    outputElement.innerHTML = html;
                 }
-
-
-                // this.updateScaleFactor();
-                // let html = '';
-                // let outputElement = document.querySelector('.output');
-                // //Make fresh html grid
-                // for (let y = 0; y < emojiGrid.height; y++) {
-                //     html += `<div class='row'>`;
-                //     for (let x = 0; x < emojiGrid.width; x++) {
-                //         html += `<div class='emoji'>${emojiGrid.grid[y][x]}</div>`;
-                //     }
-                //     html += '</div>';
-                // }
-                // outputElement.innerHTML = html;
             },
 
             createEmojiGrid(width, height) {
@@ -227,9 +236,10 @@
                 }
             },
             updateScaleFactor() {
-                console.log("From here");
-                this.updateEmojiTextureMap();
-                return;
+                if (this.useWebgl) {
+                    this.updateEmojiTextureMap();
+                    return;
+                }
                 let output = document.querySelector('.output');
                 let appWidth = document.querySelector('#app').offsetWidth;
                 let scaleFactor = appWidth / this.emojiWidth;
@@ -269,6 +279,12 @@
         max-width: 800px;
         margin: 0 auto;
         display: block;
+    }
+
+    .render-output{
+        margin-top:30px;
+        margin-left: -20px;
+        width:calc(100% + 40px);
     }
 
     .output {
