@@ -1,5 +1,6 @@
 <!--Todo:-->
 <!--Export EmojiPicture-->
+<!--Emoji Camera-->
 
 <template>
     <div id="app">
@@ -19,10 +20,12 @@
                     </md-field>
                 </md-list-item>
 
-                <md-subheader>Emoji Palette</md-subheader>
-                <md-list-item v-for="palette in paletteOptions">
-                    <md-button @click="emojiPalette=palette.emojis">{{palette.name}}</md-button>
-                </md-list-item>
+                <md-field>
+                    <label for="palette-select">Quick palette</label>
+                    <md-select id="palette-select" v-model="emojiPalette">
+                        <md-option v-for="palette in paletteOptions" :value="palette.emojis">{{palette.name}}</md-option>
+                    </md-select>
+                </md-field>
                 <md-list-item>
                     <md-field>
                         <label>Palette</label>
@@ -42,7 +45,8 @@
                 picture
             </md-button>
             <md-progress-spinner v-show="loading" md-mode="indeterminate"></md-progress-spinner>
-            <pre class="output"></pre>
+            <!--            <pre class="output"></pre>-->
+            <div class="render-output"></div>
             <img class="preview-image">
         </md-content>
     </div>
@@ -51,6 +55,8 @@
 <script>
     import EmojiMapManager from '@/js/EmojiMapManager';
     import LabConvert from '@/js/LabConvert';
+    import * as PIXI from 'pixi.js';
+    import EmojiSplitter from "./js/EmojiSplitter";
     // import EmojiSplitter from "@/js/EmojiSplitter";
     // import EmojiMap from "@/js/EmojiMap";
 
@@ -69,6 +75,8 @@
                 grid: null,
                 imageData: null,
                 emojiWidth: 100,
+                spriteCache: {},
+                timeouts: [],
                 paletteOptions: [
                     {
                         name: 'Default',
@@ -95,22 +103,40 @@
             this.emojiPalette = this.paletteOptions[0].emojis;// Default
             this.updateScaleFactor();
             window.addEventListener('resize', () => this.updateScaleFactor());
-            this.updatePalette();
+            // this.updatePalette();
+
+            this.renderView = new PIXI.Application({backgroundColor: 0x222222});
+            this.renderView.renderer.resize(0,0);
+            document.querySelector('.render-output').appendChild(this.renderView.view);
         },
         methods: {
             updatePalette() {
                 this.loading = true;
-                this.emojiMap = EmojiMapManager.emojiMap(this.emojiPalette);
-                console.log("Updated palette", this.emojiMap);
+                if (this.emojiMap === null || this.emojiMap.palette !== this.emojiPalette) {
+
+                    this.emojiMap = EmojiMapManager.emojiMap(this.emojiPalette);
+                    console.log("XHERE");
+                    this.updateEmojiTextureMap();
+                }
                 this.loading = false;
+            },
+            updateEmojiTextureMap() {
+                console.log("Updating emoji texture map");
+                const emojiSize = document.querySelector('#app').offsetWidth / this.emojiWidth;
+                let emojis = EmojiSplitter.spliddit(this.emojiPalette);
+                for (let emoji of emojis) {
+                    let text = new PIXI.Text(emoji, {fontSize: emojiSize, fill: '#ffffff'});
+                    text.updateText(); // force it to render to texture inside
+
+                    this.spriteCache[emoji] = text.texture;
+                }
             },
             loadImage() {
                 let now = performance.now();
                 this.loading = true;
                 console.log('loading true');
 
-                if (this.emojiMap.palette !== this.emojiPalette)
-                    this.emojiMap = EmojiMapManager.emojiMap(this.emojiPalette);
+                this.updatePalette();
 
                 let file = document.querySelector('input[type=file]').files[0];
                 let image = document.querySelector('.preview-image');
@@ -129,8 +155,9 @@
                     context.drawImage(image, 0, 0, width, height);
 
                     this.grid = this.createEmojiGrid(width, height);
-                    this.imageData = context.getImageData(0, 0, canvas.width, canvas.height).data;
-                    this.update();
+                    let imageData = context.getImageData(0, 0, canvas.width, canvas.height).data;
+                    this.pictureToEmoji(this.grid, imageData);
+                    this.renderEmojiGrid(this.grid);
 
                     this.loading = false;
                     console.log('loading false');
@@ -139,31 +166,41 @@
                 }
             },
 
-            update() {
-                // setTimeout(() => {
-                if (EmojiMapManager.isCached(this.emojiPalette)) {
-                    this.updatePalette();
-                }
-
-                this.pictureToEmoji(this.grid, this.imageData);
-                this.renderEmojiGrid(this.grid);
-
-                // }, 10);
-            },
-
             renderEmojiGrid(emojiGrid) {
-                this.updateScaleFactor();
-                let html = '';
-                let outputElement = document.querySelector('.output');
-                //Make fresh html grid
-                for (let y = 0; y < emojiGrid.height; y++) {
-                    html += `<div class='row'>`;
-                    for (let x = 0; x < emojiGrid.width; x++) {
-                        html += `<div class='emoji'>${emojiGrid.grid[y][x]}</div>`;
-                    }
-                    html += '</div>';
+                const appWidth = document.querySelector('#app').offsetWidth;
+                const emojiSize = appWidth / this.emojiWidth;
+
+                this.renderView.renderer.resize(appWidth, emojiGrid.height * emojiSize);
+                // Clear stage
+                while (this.renderView.stage.children[0]) {
+                    this.renderView.stage.removeChild(this.renderView.stage.children[0]);
                 }
-                outputElement.innerHTML = html;
+
+
+                for (let y = 0; y < emojiGrid.height; y++) {
+                    for (let x = 0; x < emojiGrid.width; x++) {
+                        let emoji = emojiGrid.grid[y][x];
+                        let sprite = new PIXI.Sprite(this.spriteCache[emoji]);
+                        sprite.x = x * emojiSize;
+                        sprite.y = y * emojiSize;
+
+                        this.renderView.stage.addChild(sprite);
+                    }
+                }
+
+
+                // this.updateScaleFactor();
+                // let html = '';
+                // let outputElement = document.querySelector('.output');
+                // //Make fresh html grid
+                // for (let y = 0; y < emojiGrid.height; y++) {
+                //     html += `<div class='row'>`;
+                //     for (let x = 0; x < emojiGrid.width; x++) {
+                //         html += `<div class='emoji'>${emojiGrid.grid[y][x]}</div>`;
+                //     }
+                //     html += '</div>';
+                // }
+                // outputElement.innerHTML = html;
             },
 
             createEmojiGrid(width, height) {
@@ -190,6 +227,9 @@
                 }
             },
             updateScaleFactor() {
+                console.log("From here");
+                this.updateEmojiTextureMap();
+                return;
                 let output = document.querySelector('.output');
                 let appWidth = document.querySelector('#app').offsetWidth;
                 let scaleFactor = appWidth / this.emojiWidth;
@@ -209,7 +249,10 @@
         },
         watch: {
             emojiWidth() {
-                this.updateScaleFactor();
+                this.timeouts.forEach(t => clearTimeout(t));
+                this.timeouts.push(setTimeout(() => {
+                    this.updateScaleFactor();
+                }, 500));
                 // console.log("Changing emoji size to", newSize);
                 // document.documentElement.style.setProperty('--emoji-size', newSize + 'px');
             }
