@@ -3,10 +3,10 @@ Turns the pixels of an image into emojis, by matching the average emoji color (i
 
 ## Example
 Every pixel is an emoji, the emojis that the algorithm can pick from can be predefined by the user.
-### Original picture
-![Original image](public/img/bbe.png)
 ### Emojified picture
 ![Emojified image](public/img/icons/android-chrome-512x512.png)
+### Original picture
+![Original image](public/img/bbe.png)
 
 
 ## Project setup
